@@ -1,0 +1,10 @@
+# 框架机检报告
+
+目录：C:\Users\18168\WorkBuddy\2026-11-06-22-14-33\manju-framework-workflow\examples
+文件 6 / 单元 3 / 分集 60
+FAIL 0 ｜ WARN 0
+
+全部通过：F01–F18 零 FAIL、零 WARN。
+
+> FAIL 必须修；WARN 人工复核并在交接单写结论。
+> 框架机检通过 ≠ 正文能看，下游仍须跑 E1–E26 / S1–S8。
