@@ -46,9 +46,15 @@ ALWAYS = ["sources/SOURCES.md"]
 
 
 def version() -> str:
-    text = (ROOT / "SKILL.md").read_text(encoding="utf-8", errors="replace")[:400]
-    m = re.search(r"v(\d+\.\d+\.\d+)", text)
-    return m.group(1) if m else "0.0.0"
+    """优先读 frontmatter 的 version 字段，避免长 description 把标题挤出截取范围。"""
+    text = (ROOT / "SKILL.md").read_text(encoding="utf-8", errors="replace")
+    m = re.search(r"^version:\s*(\d+\.\d+\.\d+)\s*$", text, re.M)
+    if m:
+        return m.group(1)
+    m = re.search(r"v(\d+\.\d+\.\d+)", text[:2000])
+    if m:
+        return m.group(1)
+    raise RuntimeError("SKILL.md 里找不到 version 字段或 vX.Y.Z 标题，拒绝打 0.0.0 包")
 
 
 def collect(include_sources: bool) -> list[str]:
@@ -115,7 +121,7 @@ def main() -> int:
         if check.returncode != 0 or "自测通过" not in (check.stdout or ""):
             print("副本自测失败，已中止打包:\n%s\n%s" % (check.stdout, check.stderr), file=sys.stderr)
             return 2
-        print("[1/3] 副本自测通过（F01–F18 正例 0 FAIL / 0 WARN）")
+        print("[1/3] 副本自测通过（F01–F20 正例 0 FAIL / 0 WARN、6 条反例精确命中）")
 
         DIST.mkdir(exist_ok=True)
         zp = DIST / (name + ".zip")

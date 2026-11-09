@@ -28,7 +28,7 @@
 
 60 集三单元时第一道接缝在 EP20，与 EP10 的商业首墙必然不重合。本包**两类都保留**：商业首墙单独填在「商业首墙集号」列并豁免接缝规则，结构墙填在「结构墙集号」列且必须挂接缝；两类合并后统一检查卡点间隔 ≥5 集。硬把两者合成一条规则会逼用户造假数据。
 
-## 2. F01–F18 机检规则
+## 2. F01–F20 机检规则
 
 | 编号 | 级别 | 检查对象 | 判据 |
 |---|---|---|---|
@@ -50,6 +50,10 @@
 | F16 | WARN | 节拍表 | 四段占比偏差 ≤5%（起势 15 / 攀升 30 / 风暴 35 / 决战 20） |
 | F17 | FAIL | 台账 | 四账齐备；每条伏笔有首现集/拟收集团/状态，且回收间隔 ≥2 集 |
 | F18 | FAIL | 全部 md | 无 `【填写】` / `TODO` / `TBD` 残留 |
+| F19 | **WARN** | 可选 `06-emotion-curve.tsv` | 每行：情绪主调 ∈ 甜/虐/爽/紧张；情绪走势 ∈ 三型；作用序列 4 项 ∈ 蓄力/推高/砸低/转折；强度序列 4 个 1–10；主波序号 1–4 且落在「推高/转折」；**主波强度 = 四点最大值且 ≥8** |
+| F20 | **WARN** | 可选 `06-emotion-curve.tsv` | 行数 = 总集数、集号 1..N 连续；主波后转折秒 ∈ 1–10；作用序列至少含 1 个「蓄力」与 1 个「转折/砸低」 |
+
+**F19/F20 是可选规则**（v1.1.0）：仅当 `06-emotion-curve.tsv` 存在时触发，**只报 WARN**，不进 F01 的六个必交文件，也不改 G4。旧项目没有这张表时，机检行为与 v1.0.0 完全一致。理由：情绪强度是人工相对刻度，机检只能查「口径是否自洽」，不能替人判断好不好看，所以不给 FAIL。口径见 `05` §7。
 
 **三级语义**：`FAIL` 必须修；`WARN` 人工复核并在机检报告写结论；`NOTE` 不要求修改。
 
@@ -68,7 +72,7 @@ python scripts/validate_framework.py --dir output --json # 机器可读结果
 
 | 层 | 工具 | 查什么 |
 |---|---|---|
-| 框架层（本包） | `validate_framework.py` F01–F18 | 契约、单元链、节拍表、台账、占位符 |
+| 框架层（本包） | `validate_framework.py` F01–F20 | 契约、单元链、节拍表、台账、占位符、单集情绪曲线（可选） |
 | 正文层 | `short-drama-factory/scripts/validate_episode.py` E1–E26 | 体量、气口、断章、对白占比、无效微动作 E26、谜语黑话 E25、干聊断层 E24 |
 | 全剧层 | `short-drama-factory/scripts/validate_series.py` S1–S8 | 伏笔超期、死人开口、断章缺失、付费墙落位、四表齐全、反转轮换 |
 | 内容质量 | `drama-skills/evaluations/content_quality_gate.py` | 盲评式内容质量门禁 |
@@ -90,4 +94,4 @@ python scripts/validate_framework.py --dir output --json # 机器可读结果
 ```
 
 ---
-规则编号 F01–F18 为本包原创编排；门禁思想借鉴 `lixiaoxiao9888-create/short-drama-factory`（MIT）的 E/S 三级语义与 `zenstory-ai/drama-skills`（MIT）的阶段契约。
+规则编号 F01–F20 为本包原创编排（F19/F20 的口径归纳自用户提供的内部资料，仅取方法思想、不复制原文，见 `references/08` §5）；门禁思想借鉴 `lixiaoxiao9888-create/short-drama-factory`（MIT）的 E/S 三级语义与 `zenstory-ai/drama-skills`（MIT）的阶段契约。

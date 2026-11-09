@@ -2,7 +2,7 @@
 
 你拿到的是一个**和 AI 一起搭故事骨架**的工具包。
 
-它帮你把一部 60 集（或 40 / 80 / 100 集）的漫剧，在动笔前想清楚：观众每集在等什么、这个「等」分几段结清、每集结算什么又欠下什么、伏笔怎么不穿帮。最后给你六张表 + 一份交接单。
+它帮你把一部 60 集（或 40 / 80 / 100 集）的漫剧，在动笔前想清楚：观众每集在等什么、这个「等」分几段结清、每集结算什么又欠下什么、伏笔怎么不穿帮。最后给你六张必交表 + 一份交接单；想再细一点，可以加一张可选的单集情绪曲线表。
 
 **它不写台词，也不写剧本正文**——正文由交接单指向下游工具去写。
 
@@ -27,8 +27,8 @@
 | 方式 | 适合谁 | 怎么做 |
 |---|---|---|
 | 零安装（推荐） | 小白、偶尔用一次 | 按上面三步，什么都不装 |
-| 装成 Agent Skill | 经常用、想在任意对话里直接调用 | 把整个文件夹复制到 `~/.workbuddy/skills/manju-framework-workflow/`（Windows 是 `C:\Users\你的用户名\.workbuddy\skills\`）；Claude Code 用 `~/.claude/skills/` |
-| 只用表格 | 想自己填、不打算用 AI | 把 `templates/` 里两份 `.tsv` 直接粘进飞书多维表格，列名已对齐 `examples/` |
+| 装成 Agent Skill | 经常用、想在任意对话里直接调用 | 把整个文件夹复制到 `~/.workbuddy/skills/manju-framework-workflow/`（Windows 是 `%USERPROFILE%\.workbuddy\skills\`）；Claude Code 用 `~/.claude/skills/` |
+| 只用表格 | 想自己填、不打算用 AI | 把 `templates/` 里三份 `.tsv` 直接粘进飞书多维表格，列名已对齐 `examples/`；第三份 `06` 是可选的 |
 
 ---
 
@@ -39,12 +39,14 @@
 ```bash
 python scripts/validate_framework.py --selftest       # 确认规则可用，应显示「自测通过」
 
-mkdir output && cp templates/* output/               # Windows: copy templates\* output\
+mkdir output && cp templates/0[0-5]* output/         # 六个必交模板
+# 可选：cp templates/06-emotion-curve.tsv output/  （单集情绪曲线，不建也照常交付）
 # 按 S0 → S6 在 output/ 里填内容
 python scripts/validate_framework.py --dir output    # 交付前机检，报告写 output/framework-check.txt
 ```
 
 `templates/` 是空模板，**别直接改**；`output/` 才是你自己的项目文件。
+`06-emotion-curve.tsv` 是 v1.1.0 的可选表（每集四个情节点的作用/强度、主波、10 秒内转折），不建它时机检完全跳过相关规则，旧项目不用回填。
 `make_examples.py` 会重建模板与样例，正常情况下不用跑。
 
 ---
@@ -58,8 +60,8 @@ NOTICE.md             许可与来源声明（外发前请一起保留）
 SKILL.md              Agent 主入口：七阶段 S0–S6 + 门禁 G0–G6
 README.md / CHANGELOG.md  人读说明 / 版本记录
 references/ 01–08     八份方法文件，AI 每阶段只按需挂载一份
-templates/  6 份      空模板（含 2 份可粘飞书的 TSV）
-examples/   7 份      60 集合规样例 + 机检报告
+templates/  7 份      6 份必交 + 1 份可选（含 3 份可粘飞书的 TSV）
+examples/   8 份      60 集合规样例 + 60 行情绪曲线 + 机检报告
 scripts/    4 个      validate_framework（机检）/ fetch_sources（拉源仓库）
                       / make_examples（重建样例）/ make_distribution（重新打包）
 sources/SOURCES.md    17 个上游仓库的链接、分支、许可清单（**仅清单，不含源码**）
@@ -76,4 +78,4 @@ sources/SOURCES.md    17 个上游仓库的链接、分支、许可清单（**�
 
 ---
 
-版本 **v1.0.0** · 打包日期 2026-11-08 · 变更见 `CHANGELOG.md` · 许可见 `NOTICE.md`
+版本 **v1.1.0** · 打包日期 2026-11-09 · 变更见 `CHANGELOG.md` · 许可见 `NOTICE.md`

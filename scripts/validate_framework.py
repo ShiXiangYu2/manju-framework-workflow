@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""漫剧框架机检 F01–F18（规则见 references/07-gates-and-machine-check.md）
+"""漫剧框架机检 F01–F20（规则见 references/07-gates-and-machine-check.md）
 
 用法：
     python scripts/validate_framework.py --dir output
@@ -14,6 +14,9 @@
   · 商业首墙（免费转付费，8–12 集）来自 0xsline/short-drama；
   · 结构墙（挂单元接缝 ±1 集）来自 short-drama-factory。
 两者在 60 集三单元时必然不重合，故 F10 只约束结构墙，F11 单独看商业首墙。
+
+v1.1.0：F19/F20 为可选规则——仅当 output/06-emotion-curve.tsv 存在时生效，
+且只报 WARN。六个必交文件、G0–G6、F01–F18 的行为一律不变。
 """
 import argparse
 import csv
@@ -44,6 +47,13 @@ BEAT_REQUIRED = ["进入状态", "当前压力与钩子", "当集目标", "反�
                  "局势转折", "当集结算", "新债", "出去状态", "钩子类型"]
 BEAT_CORE = ["进入状态", "当集结算", "新债", "出去状态", "钩子类型"]
 PLACEHOLDERS = ["【填写】", "TODO", "TBD"]
+
+# 可选：单集情绪曲线（v1.1.0）。文件不存在时完全跳过，不进 FILES / F01。
+EMOTION_FILE = "06-emotion-curve.tsv"
+EMO_TONES = ("甜", "虐", "爽", "紧张")
+EMO_CURVES = {"升→降→升", "降→升→悬", "平→炸→钩"}
+EMO_ACTS = {"蓄力", "推高", "砸低", "转折"}
+EMO_PEAK_ACTS = {"推高", "转折"}
 
 
 def read(path):
@@ -246,19 +256,74 @@ def check(directory):
                 add("F18", "FAIL", "%s 残留占位符 %s" % (n, p))
                 break
 
+    # F19/F20 可选：单集情绪曲线。文件不存在时完全跳过，旧项目不受影响。
+    emo_rows = []
+    emo_path = os.path.join(directory, EMOTION_FILE)
+    if os.path.isfile(emo_path):
+        emo_rows = rows_tsv(read(emo_path))
+        emo_nums = [first_int(r.get("集号")) for r in emo_rows]
+        if total and (len(emo_rows) != total or emo_nums != list(range(1, total + 1))):
+            add("F20", "WARN", "情绪曲线表须 %d 行且集号 1..%d 连续；当前 %d 行" %
+                (total, total, len(emo_rows)))
+        for r in emo_rows:
+            ep = r.get("集号")
+            tone = clean(r.get("情绪主调"))
+            curve = (r.get("情绪走势") or "").strip()
+            acts = [x.strip() for x in (r.get("作用序列") or "").split("/") if x.strip()]
+            raw = [x.strip() for x in (r.get("强度序列") or "").split("/") if x.strip()]
+            peak = first_int(r.get("主波序号"))
+            try:
+                levels = [int(x) for x in raw]
+            except ValueError:
+                levels = []
+
+            bad19 = []
+            if not any(t in tone for t in EMO_TONES):
+                bad19.append("情绪主调")
+            if curve not in EMO_CURVES:
+                bad19.append("情绪走势")
+            if len(acts) != 4 or any(a not in EMO_ACTS for a in acts):
+                bad19.append("作用序列须4项")
+            if len(levels) != 4 or any(not 1 <= x <= 10 for x in levels):
+                bad19.append("强度序列须4个1–10")
+            if peak is None or not 1 <= peak <= 4:
+                bad19.append("主波序号须1–4")
+            else:
+                if len(acts) == 4 and acts[peak - 1] not in EMO_PEAK_ACTS:
+                    bad19.append("主波落在蓄力/砸低位")
+                if len(levels) == 4 and (levels[peak - 1] != max(levels) or levels[peak - 1] < 8):
+                    bad19.append("主波非全集最高或强度<8")
+            if bad19:
+                add("F19", "WARN", "EP%s 情绪曲线不合口径：%s" % (ep, "、".join(bad19)))
+
+            gap = first_int(r.get("主波后转折秒"))
+            bad20 = []
+            if gap is None or not 1 <= gap <= 10:
+                bad20.append("主波后转折须在10秒内")
+            if acts and "蓄力" not in acts:
+                bad20.append("缺蓄力段")
+            if acts and not ({"转折", "砸低"} & set(acts)):
+                bad20.append("缺回落/转折段")
+            if bad20:
+                add("F20", "WARN", "EP%s 情绪曲线起伏不合口径：%s" % (ep, "、".join(bad20)))
+
     stats = {"dir": directory, "files": len(FILES), "units": len(units),
-             "episodes": len(beats), "fail": sum(1 for x in issues if x[1] == "FAIL"),
+             "episodes": len(beats), "emotion": len(emo_rows),
+             "fail": sum(1 for x in issues if x[1] == "FAIL"),
              "warn": sum(1 for x in issues if x[1] == "WARN")}
     return issues, stats
 
 
 def render(issues, stats):
+    # 只写目录名：报告会随包外发，写绝对路径会泄露本机用户名与工作区路径
+    d = os.path.normpath(stats.get("dir", ""))
     lines = ["# 框架机检报告", "",
-             "目录：%s" % stats.get("dir", ""),
-             "文件 %s / 单元 %s / 分集 %s" % (stats.get("files"), stats.get("units"), stats.get("episodes")),
+             "目录：%s" % os.path.basename(d),
+             "文件 %s / 单元 %s / 分集 %s / 情绪曲线 %s（0=未启用）" %
+             (stats.get("files"), stats.get("units"), stats.get("episodes"), stats.get("emotion", 0)),
              "FAIL %d ｜ WARN %d" % (stats["fail"], stats["warn"]), ""]
     if not issues:
-        lines.append("全部通过：F01–F18 零 FAIL、零 WARN。")
+        lines.append("全部通过：F01–F20 零 FAIL、零 WARN（F19/F20 仅在 06 表存在时检查）。")
     else:
         lines.append("| 编号 | 级别 | 说明 |")
         lines.append("|---|---|---|")
@@ -290,11 +355,15 @@ def selftest():
             l for l in t.splitlines() if not l.startswith("30\t")) + "\n"),
         ("F10", "02-unit-chain.tsv", lambda t: t.replace("\t20\t10\t起势", "\t25\t10\t起势")),
         ("F18", "05-handoff.md", lambda t: t.replace("# 下游交接单", "# 下游交接单\n\n【填写】")),
+        ("F19", EMOTION_FILE, lambda t: t.replace("4/9/6/3", "4/5/9/3", 1)),
+        ("F20", EMOTION_FILE, lambda t: t.replace("\t2\t6\t前3秒", "\t2\t18\t前3秒", 1)),
     ]
+    optional = [n for n in (EMOTION_FILE,) if os.path.isfile(os.path.join(ex, n))]
+    cases = [c for c in cases if c[1] in FILES or c[1] in optional]
     ok = True
     for code, fname, mutate in cases:
         with tempfile.TemporaryDirectory() as td:
-            for n in FILES:
+            for n in FILES + optional:
                 shutil.copy(os.path.join(ex, n), os.path.join(td, n))
             p = os.path.join(td, fname)
             original = read(p)  # 必须先读：open(...,"w") 会立即截断文件

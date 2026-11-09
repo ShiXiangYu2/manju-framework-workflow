@@ -5,6 +5,9 @@
 样例是**格式演示，不是写作范本**：60 集漫剧档、3 单元、商业首墙 EP10、
 结构墙 EP20/EP40。用于 `validate_framework.py --selftest` 的正例与人工对照。
 
+v1.1.0 新增可选文件 `06-emotion-curve.tsv`（单集情绪曲线）：
+它不进 6 个必交文件，不改 `03-beat-table.tsv` 的 15 列，存在时才跑 F19/F20。
+
 用法：python scripts/make_examples.py
 """
 import os
@@ -19,6 +22,16 @@ UNIT_HEADER = ["单元ID", "起集", "止集", "核心矛盾", "回合数", "闭
 BEAT_HEADER = ["集号", "段位", "单元ID", "进入状态", "当前压力与钩子", "当集目标",
                "反对力量", "因果升级", "局势转折", "当集结算", "新债",
                "出去状态", "钩子类型", "付费墙", "制作禁区提醒"]
+
+EMO_HEADER = ["集号", "情绪主调", "情绪走势", "作用序列", "强度序列",
+              "主波序号", "主波后转折秒", "自检备注"]
+EMO_CURVES = ["升→降→升", "降→升→悬", "平→炸→钩"]
+# (四情节点作用序列, 四情节点强度序列, 主波序号, 主波后转折秒)
+EMO_PATTERNS = [
+    ("蓄力/推高/转折/砸低", "4/9/6/3", 2, 6),
+    ("蓄力/砸低/推高/转折", "3/4/9/6", 3, 8),
+    ("蓄力/转折/推高/砸低", "4/6/9/3", 3, 5),
+]
 
 SEGMENTS = [("起势", 1, 9), ("攀升", 10, 27), ("风暴", 28, 48), ("决战", 49, 60)]
 WALLS = {10, 20, 40}
@@ -71,6 +84,17 @@ def build_beats():
             "新债：授意者身份只露出半张脸，需在后续集补齐",
             out, hook, "Y" if n in WALLS else "", "群战与多人同框不排",
         ])
+    return tsv(rows)
+
+
+def build_emotion_curve():
+    """单集情绪曲线样例：每行四个情节点的作用与强度，主波必须是最高且 ≥8。"""
+    rows = [EMO_HEADER]
+    for n in range(1, 61):
+        acts, levels, peak, gap = EMO_PATTERNS[(n - 1) % len(EMO_PATTERNS)]
+        tone = "紧张" if 21 <= n <= 40 else "爽"
+        rows.append([n, tone, EMO_CURVES[(n - 1) % len(EMO_CURVES)], acts,
+                     levels, peak, gap, "前3秒入戏；主波后10秒内有转折；无废戏"])
     return tsv(rows)
 
 
@@ -277,6 +301,7 @@ HANDOFF = """# 下游交接单 · 样例《被冒领的功绩》
 - **付费墙集号清单**：商业首墙 EP10；结构墙 EP20、EP40
 - **前三集节拍卡要点**：E1 受害+立场／E2 证据回放／E3 冲突升级
 - **四段波形区间**：E1–E9／E10–E27／E28–E48／E49–E60
+- **单集情绪曲线（可选）**：examples/06-emotion-curve.tsv，60 行，F19/F20 已过检
 
 ## 4. 台账与禁区
 
@@ -297,6 +322,7 @@ HANDOFF = """# 下游交接单 · 样例《被冒领的功绩》
 - [x] 机检零 FAIL
 - [x] 无占位符残留
 - [x] 档位、集数、付费墙与两份 TSV 一致
+- [x] 可选 06 已填且过 F19/F20
 """
 
 
@@ -305,13 +331,15 @@ def main():
     os.makedirs(EXAMPLES, exist_ok=True)
     write(os.path.join(TEMPLATES, "02-unit-chain.tsv"), tsv([UNIT_HEADER]))
     write(os.path.join(TEMPLATES, "03-beat-table.tsv"), tsv([BEAT_HEADER]))
+    write(os.path.join(TEMPLATES, "06-emotion-curve.tsv"), tsv([EMO_HEADER]))
     write(os.path.join(EXAMPLES, "02-unit-chain.tsv"), build_units())
     write(os.path.join(EXAMPLES, "03-beat-table.tsv"), build_beats())
+    write(os.path.join(EXAMPLES, "06-emotion-curve.tsv"), build_emotion_curve())
     write(os.path.join(EXAMPLES, "00-intake-card.md"), INTAKE)
     write(os.path.join(EXAMPLES, "01-framework-brief.md"), BRIEF)
     write(os.path.join(EXAMPLES, "04-ledger.md"), LEDGER)
     write(os.path.join(EXAMPLES, "05-handoff.md"), HANDOFF)
-    print("生成完成：templates/*.tsv 2 份，examples/ 6 份（节拍表 60 行）")
+    print("生成完成：templates/*.tsv 3 份（含可选 06），examples/ 7 份（节拍表与情绪曲线各 60 行）")
 
 
 if __name__ == "__main__":

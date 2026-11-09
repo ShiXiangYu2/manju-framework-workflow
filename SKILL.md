@@ -1,12 +1,12 @@
 ---
 name: manju-framework-workflow
-version: 1.0.0
-updated: 2026-11-08
-description: "漫剧/短剧剧本【框架创建】工作流。把一句创意、原著或爆款拉片情报，编排成可交付的结构包：情报卡 → 情绪契约 → 套路与赛道 → 单元链与付费墙 → 全剧分集节拍表 → 四账台账 → 机检交接单。只做框架，不写正文、不画分镜、不出提示词。触发：漫剧框架/短剧框架/故事框架/搭结构/定情绪契约/拆单元链/排节拍表/付费墙规划/框架机检/立项大纲。写正文请转 short-drama-factory 或 drama-skills。"
+version: 1.1.0
+updated: 2026-11-09
+description: "漫剧/短剧剧本【框架创建】工作流。把一句创意、原著或爆款拉片情报，编排成可交付的结构包：情报卡 → 情绪契约 → 套路与赛道 → 单元链与付费墙 → 全剧分集节拍表 →（可选）单集情绪曲线 → 四账台账 → 机检交接单。只做框架，不写正文、不画分镜、不出提示词。触发：漫剧框架/短剧框架/故事框架/搭结构/定情绪契约/拆单元链/排节拍表/单集情绪曲线/情绪大纲/对抗功能位/付费墙规划/框架机检/立项大纲。写正文请转 short-drama-factory 或 drama-skills。"
 license: "编排层原创；源仓库权利归原作者，许可见 references/08-source-licenses.md"
 ---
 
-# 漫剧剧本框架创建工作流 v1.0.0
+# 漫剧剧本框架创建工作流 v1.1.0
 
 > **一句话定位**：框架不是大纲，是「情绪契约 + 结算节奏 + 可核对的交接状态」。
 > 观众买的是每集要续期的那口气，人物只是这口气的载体；框架阶段不解决人物怎么写，只解决**这口气烧几集、每集结算到哪一步、什么时候换矛盾、换的时候不许断气**。
@@ -48,7 +48,7 @@ S0 情报接入 → S1 定契约 → S2 选套路与赛道 → S3 拆单元定�
 | S1 | `/定契约` | 情报卡 | 写一句不带情节的「观众在等什么」、判情绪流⇄剧情流、列创作者契约 | `01-framework-brief.md` §A | **G1** | `02` |
 | S2 | `/定套路` | 契约 | 给 2–3 个**机制不同**的方向候选，选套路/开场/故事类型/赛道/画风，记选择理由 | `01-framework-brief.md` §B | **G2** | `03` |
 | S3 | `/拆单元` | 契约 + 套路 | 定档位、拆单元链（20–30 集硬帽）、三缝合一换矛盾、付费墙挂接缝、写机制循环终止条件 | `02-unit-chain.tsv` + 简报 §C | **G3** | `04` |
-| S4 | `/排节拍` | 单元链 | 四段波形配比、前三集节拍卡、逐集填「进入状态/当集结算/新债/出去状态/钩子类型/卡点」、15 秒四拍落到每集 | `03-beat-table.tsv` | **G4** | `05` |
+| S4 | `/排节拍` | 单元链 | 四段波形配比、前三集节拍卡、逐集填「进入状态/当集结算/新债/出去状态/钩子类型/卡点」、15 秒四拍落到每集；可选补单集情绪曲线（四情节点作用/强度/主波/10 秒内转折） | `03-beat-table.tsv`（可选 `06-emotion-curve.tsv`） | **G4** | `05` |
 | S5 | `/建台账` | 节拍表 | 伏笔/人物/道具/规则四账 + 漫剧角色不变量与画风锚点 + 伏笔生命周期 | `04-ledger.md` | **G5** | `06` |
 | S6 | `/框架交付` | 全部产出 | 跑框架机检、清理占位符、生成下游交接单 | `05-handoff.md` + 机检报告 | **G6** | `07` |
 
@@ -76,7 +76,7 @@ python scripts/fetch_sources.py --force                    # 自动回流更新�
 ```
 
 - 输出三级语义：`FAIL` 必须修 / `WARN` 人工复核 / `NOTE` 不要求修改。
-- 规则编号 **F01–F18** 见 `references/07-gates-and-machine-check.md`。
+- 规则编号 **F01–F20** 见 `references/07-gates-and-machine-check.md`。**F19/F20 是可选 WARN**：仅当 `output/06-emotion-curve.tsv` 存在时生效；不建这张表，机检行为与 v1.0.0 完全一致。
 - 下游正文机检另跑 `short-drama-factory` 的 `validate_episode.py`（E1–E26）与 `validate_series.py`（S1–S8），两层不互相替代。
 
 ## 4. 绝对红线（8 条）
@@ -100,8 +100,11 @@ output/
 ├── 03-beat-table.tsv       全剧分集节拍表（可直接粘飞书）
 ├── 04-ledger.md            四账台账 + 漫剧不变量
 ├── 05-handoff.md           下游交接单
+├── 06-emotion-curve.tsv    （可选）单集情绪曲线，可粘飞书；不建则跳过 F19/F20
 └── framework-check.txt     机检报告（脚本生成）
 ```
+
+`00`–`05` 是六个必交文件，F01 检查；`06` 是 v1.1.0 新增的**可选增量**，不回填旧项目。
 
 ## 6. 自动升级规程（所有写入需人工确认）
 
@@ -118,12 +121,12 @@ output/
 | `references/02-emotion-contract.md` | S1：情绪契约、流派判定、创作者契约、机制回路 |
 | `references/03-trope-and-genre.md` | S2：救猫咪 15/6 拍、4 大套路占比、开场三型、10 类故事型、赛道与画风 |
 | `references/04-unit-and-structure.md` | S3：单元链、三缝合一、三档结构、四段波形、付费墙、机制循环换代 |
-| `references/05-beat-and-episode-map.md` | S4：15 秒四拍、前三集、单集契约、钩子与断章、集间交接 |
+| `references/05-beat-and-episode-map.md` | S4：15 秒四拍、前三集、单集契约、钩子与断章、集间交接、单集情绪曲线（可选） |
 | `references/06-continuity-and-manju.md` | S5：七记忆文件、四账、伏笔生命周期、漫剧角色/画风一致性 |
-| `references/07-gates-and-machine-check.md` | S6：G0–G6 判据表、F01–F18 机检规则、交付清单 |
+| `references/07-gates-and-machine-check.md` | S6：G0–G6 判据表、F01–F20 机检规则、交付清单 |
 | `references/08-source-licenses.md` | 17 个源仓库链接、许可、取用边界、升级规程 |
-| `templates/` | 6 份空模板（含可粘飞书的 TSV） |
-| `examples/` | 填好的样例，供 `--selftest` 与人工对照 |
+| `templates/` | 6 份必交空模板 + 1 份可选 `06-emotion-curve.tsv`（含可粘飞书的 TSV） |
+| `examples/` | 填好的样例（含 60 行情绪曲线），供 `--selftest` 与人工对照 |
 | `scripts/` | `fetch_sources.py` 回流更新、`validate_framework.py` 框架机检 |
 
 冲突裁决顺序：**用户明确要求 > 本文件 > 对应 reference > 源仓库原文**。
